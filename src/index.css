@@ -1,0 +1,75 @@
+/* SmartServe HMS - Global Styles */
+
+:root {
+  --primary-color: #4a5ee5;
+  --secondary-color: #8c78f1;
+  --dark-bg: #111113;
+  --dark-paper: #18181b;
+  --light-bg: #f8f9fa;
+  --light-paper: #ffffff;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--light-bg);
+}
+
+/* Glassmorphism & Hover effects for Mantine Cards */
+.mantine-Card-root, .mantine-Paper-root {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mantine-Card-root:hover, .hover-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+}
+
+/* App scale and layout fixes */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Gradient text utilities */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Smooth micro-animations for interactive elements */
+button, .mantine-ActionIcon-root {
+  transition: transform 0.1s ease-in-out, opacity 0.1s ease-in-out !important;
+}
+
+button:active, .mantine-ActionIcon-root:active {
+  transform: scale(0.96) !important;
+}
+
+/* Custom scrollbar for premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(144, 146, 150, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(144, 146, 150, 0.5);
+}

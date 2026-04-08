@@ -1,0 +1,386 @@
+import { useEffect, useState, useCallback } from 'react';
+import {
+  Title,
+  Text,
+  Stack,
+  Group,
+  Paper,
+  SimpleGrid,
+  ThemeIcon,
+  Table,
+  Badge,
+  Button,
+  Select,
+  Grid,
+  Progress,
+  Tabs,
+  Tooltip,
+  Divider,
+} from '@mantine/core';
+import { DatePickerInput } from '@mantine/dates';
+import {
+  IconTrendingUp,
+  IconTrendingDown,
+  IconCash,
+  IconShoppingCart,
+  IconReportAnalytics,
+  IconRefresh,
+  IconListCheck,
+  IconInfoCircle,
+  IconPrinter,
+  IconReceipt2,
+} from '@tabler/icons-react';
+import api from '../lib/api';
+import dayjs from 'dayjs';
+
+interface FinanceReport {
+  revenue: number;
+  expense: number;
+  procurement: number;
+  recipeCost: number;
+  totalOutflow: number;
+  cashFlowProfit: number;
+  realPerformanceProfit: number;
+  breakdown: {
+    expenses: { category: string; _sum: { amount: number } }[];
+    sales: { paymentStatus: string; _sum: { totalAmount: number } }[];
+  }
+}
+
+interface LedgerEntry {
+  period: string;
+  paidRevenue: number;
+  unpaidRevenue: number;
+  generalExpense: number;
+  procurementExpense: number;
+  totalRevenue: number;
+  totalExpense: number;
+  profit: number;
+  recipeCost: number;
+  grossProfit: number;
+}
+
+interface ProfitAnalysis {
+  name: string;
+  quantitySold: number;
+  revenue: number;
+  totalCost: number;
+  unitPrice: number;
+  unitCost: number;
+  profit: number;
+  margin: number;
+}
+
+export default function FinanceHub() {
+  const [data, setData] = useState<FinanceReport | null>(null);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [profitAnalysis, setProfitAnalysis] = useState<ProfitAnalysis[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Custom Date Range
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    dayjs().startOf('month').toDate(),
+    dayjs().endOf('day').toDate(),
+  ]);
+
+  const [ledgerType, setLedgerType] = useState<'DAILY' | 'MONTHLY'>('DAILY');
+
+  const fetchData = useCallback(async () => {
+    if (!dateRange[0] || !dateRange[1]) return;
+    setLoading(true);
+    try {
+      const start = dateRange[0].toISOString();
+      const end = dateRange[1].toISOString();
+      
+      const [financeRes, ledgerRes, profitRes] = await Promise.all([
+        api.get('/reports/finance', { params: { start, end } }),
+        api.get('/reports/ledger', { params: { type: ledgerType, start, end } }),
+        api.get('/reports/profit-analysis', { params: { start, end } })
+      ]);
+      setData(financeRes.data);
+      setLedger(ledgerRes.data);
+      setProfitAnalysis(profitRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange, ledgerType]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const formatRWF = (val: number) => `RWF ${new Intl.NumberFormat().format(Math.round(val || 0))}`;
+  const formatShortRWF = (val: number) => `RWF ${new Intl.NumberFormat(undefined, { notation: 'compact' }).format(Math.round(val || 0))}`;
+  const profitColor = (data?.realPerformanceProfit || 0) >= 0 ? 'teal' : 'red';
+  const cashFlowColor = (data?.cashFlowProfit || 0) >= 0 ? 'teal' : 'red';
+
+  return (
+    <Stack gap="xl">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          .print-full { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+          body { background: white !important; }
+          .mantine-AppShell-navbar { display: none !important; }
+          .mantine-AppShell-header { display: none !important; }
+          .mantine-AppShell-main { padding: 0 !important; margin: 0 !important; }
+          .print-only { display: block !important; }
+          .print-header { margin-bottom: 2rem; border-bottom: 2px solid #333; padding-bottom: 1rem; }
+        }
+        .print-only { display: none; }
+      `}</style>
+
+      {/* Print-Only Header */}
+      <div className="print-only print-header">
+        <Group justify="space-between">
+          <div>
+            <Title order={1}>SMARTSERVE FINANCIAL REPORT</Title>
+            <Text>Period: {dayjs(dateRange[0]).format('DD MMM YYYY')} to {dayjs(dateRange[1]).format('DD MMM YYYY')}</Text>
+          </div>
+          <IconReceipt2 size={48} />
+        </Group>
+      </div>
+
+      <Group justify="space-between" align="flex-end" className="no-print">
+        <div>
+          <Title order={2}>Financial Ledger & Printing Center</Title>
+          <Text size="sm" c="dimmed">Analyze your business performance within any specified date range.</Text>
+        </div>
+        <Group>
+          <DatePickerInput
+            type="range"
+            label="Specified Date Range"
+            placeholder="Select dates"
+            value={dateRange}
+            onChange={(val: any) => setDateRange(val)}
+            style={{ minWidth: 280 }}
+          />
+          <Button variant="light" leftSection={<IconRefresh size={16} />} onClick={fetchData} loading={loading} mt="xl">Refresh</Button>
+          <Button color="dark" leftSection={<IconPrinter size={16} />} onClick={handlePrint} mt="xl">Print Report</Button>
+        </Group>
+      </Group>
+
+      <Tabs variant="pills" defaultValue="summary" radius="md" className="print-full">
+        <Tabs.List mb="lg" className="no-print">
+          <Tabs.Tab value="summary" leftSection={<IconReportAnalytics size={16} />}>Executive Summary</Tabs.Tab>
+          <Tabs.Tab value="ledger" leftSection={<IconListCheck size={16} />}>Historical Ledger</Tabs.Tab>
+          <Tabs.Tab value="profit" leftSection={<IconTrendingUp size={16} />}>Recipe-Based Profit</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="summary">
+          <Stack gap="xl">
+            {/* KPIs */}
+            <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }}>
+              <Paper withBorder p="md" radius="lg" shadow="xs">
+                <Group justify="space-between">
+                  <div>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Total Revenue</Text>
+                    <Text size="lg" fw={900}>{formatRWF(data?.revenue || 0)}</Text>
+                  </div>
+                  <ThemeIcon color="blue" size={36} radius="md" variant="light"><IconTrendingUp size={20} /></ThemeIcon>
+                </Group>
+              </Paper>
+              <Paper withBorder p="md" radius="lg" shadow="xs">
+                <Group justify="space-between">
+                  <div>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Total Expenses</Text>
+                    <Text size="lg" fw={900}>{formatRWF(data?.expense || 0)}</Text>
+                  </div>
+                  <ThemeIcon color="orange" size={36} radius="md" variant="light"><IconTrendingDown size={20} /></ThemeIcon>
+                </Group>
+              </Paper>
+              <Paper withBorder p="md" radius="lg" shadow="xs">
+                <Group justify="space-between">
+                  <div>
+                    <Text size="xs" c="dimmed" tt="uppercase" fw={700}>Procurement</Text>
+                    <Text size="lg" fw={900}>{formatRWF(data?.procurement || 0)}</Text>
+                  </div>
+                  <ThemeIcon color="cyan" size={36} radius="md" variant="light"><IconShoppingCart size={20} /></ThemeIcon>
+                </Group>
+              </Paper>
+              <Paper withBorder p="md" radius="lg" shadow="sm" style={{ background: `var(--mantine-color-${profitColor}-0)` }}>
+                <Group justify="space-between">
+                  <div>
+                    <Group gap="xs">
+                      <Text size="xs" c={profitColor} tt="uppercase" fw={700}>Real Profit (Performance)</Text>
+                      <Tooltip label="Revenue minus Production Costs (Recipes) and General Expenses. This is your actual performance."><IconInfoCircle size={14} /></Tooltip>
+                    </Group>
+                    <Text size="lg" fw={900} c={profitColor}>{formatRWF(data?.realPerformanceProfit || 0)}</Text>
+                  </div>
+                  <ThemeIcon color={profitColor} size={36} radius="md" variant="filled"><IconTrendingUp size={20} /></ThemeIcon>
+                </Group>
+              </Paper>
+              <Paper withBorder p="md" radius="lg" shadow="sm" style={{ background: `var(--mantine-color-${cashFlowColor}-0)` }}>
+                <Group justify="space-between">
+                  <div>
+                    <Group gap="xs">
+                      <Text size="xs" c={cashFlowColor} tt="uppercase" fw={700}>Cash Flow (Net Cash In)</Text>
+                      <Tooltip label="Revenue minus all cash outflow (Procurement + Expenses). This is how much cash you actually kept."><IconInfoCircle size={14} /></Tooltip>
+                    </Group>
+                    <Text size="lg" fw={900} c={cashFlowColor}>{formatRWF(data?.cashFlowProfit || 0)}</Text>
+                  </div>
+                  <ThemeIcon color={cashFlowColor} size={36} radius="md" variant="light"><IconCash size={20} /></ThemeIcon>
+                </Group>
+              </Paper>
+            </SimpleGrid>
+
+            <Grid gutter="xl">
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <Paper withBorder p="lg" radius="lg">
+                  <Title order={4} mb="md">Settlement Breakdown</Title>
+                  <Stack gap="md">
+                    {data?.breakdown.sales.map((s, i) => (
+                      <div key={i}>
+                        <Group justify="space-between" mb={4}>
+                          <Text size="sm" fw={600}>{s.paymentStatus}</Text>
+                          <Text size="sm" fw={700}>{formatRWF(s._sum.totalAmount)}</Text>
+                        </Group>
+                        <Progress value={((s._sum.totalAmount || 0) / (data.revenue || 1)) * 100} color={s.paymentStatus === 'PAID' ? 'teal' : 'red'} size="sm" radius="xl" />
+                      </div>
+                    ))}
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, md: 6 }}>
+                <Paper withBorder p="lg" radius="lg">
+                  <Title order={4} mb="md">Expense Categories</Title>
+                  <Table>
+                    <Table.Thead><Table.Tr><Table.Th>Category</Table.Th><Table.Th ta="right">Amount</Table.Th></Table.Tr></Table.Thead>
+                    <Table.Tbody>
+                      {data?.breakdown.expenses.map((e, i) => (
+                        <Table.Tr key={i}>
+                          <Table.Td><Badge variant="outline" color="gray">{e.category}</Badge></Table.Td>
+                          <Table.Td ta="right" fw={700}>{formatRWF(e._sum.amount)}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                      <Table.Tr style={{ background: 'var(--mantine-color-gray-0)' }}>
+                        <Table.Td><Text fw={700}>Stock Procurement</Text></Table.Td>
+                        <Table.Td ta="right" fw={700}>{formatRWF(data?.procurement || 0)}</Table.Td>
+                      </Table.Tr>
+                    </Table.Tbody>
+                  </Table>
+                </Paper>
+              </Grid.Col>
+            </Grid>
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="ledger">
+          <Paper withBorder radius="lg" p="md" className="print-full">
+            <Group justify="space-between" mb="md" className="no-print">
+              <Title order={4}>Historical Audit Tracker</Title>
+              <Select 
+                size="xs"
+                value={ledgerType}
+                onChange={(val) => setLedgerType(val as any)}
+                data={[{ value: 'DAILY', label: 'Daily Reports' }, { value: 'MONTHLY', label: 'Monthly Reports' }]}
+              />
+            </Group>
+            <Table verticalSpacing="sm" highlightOnHover withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>{ledgerType === 'DAILY' ? 'Date' : 'Month'}</Table.Th>
+                  <Table.Th>
+                    <Group gap={4}>Sales <Tooltip label="Paid / Unpaid Revenue"><IconInfoCircle size={14} className="no-print" /></Tooltip></Group>
+                  </Table.Th>
+                  <Table.Th>
+                    <Group gap={4}>Expenses <Tooltip label="General / Procurement Outflow"><IconInfoCircle size={14} className="no-print" /></Tooltip></Group>
+                  </Table.Th>
+                  <Table.Th ta="right">Net Profit</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {ledger.map((entry, i) => (
+                  <Table.Tr key={i}>
+                    <Table.Td><Text fw={700}>{entry.period}</Text></Table.Td>
+                    <Table.Td>
+                      <Stack gap={0}>
+                        <Text size="sm" color="teal.8" fw={600}>{formatShortRWF(entry.totalRevenue)}</Text>
+                        <Group gap={4}>
+                          <Badge size="xs" color="teal" variant="light">P: {formatShortRWF(entry.paidRevenue)}</Badge>
+                          <Badge size="xs" color="red" variant="light">U: {formatShortRWF(entry.unpaidRevenue)}</Badge>
+                        </Group>
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td>
+                       <Stack gap={0}>
+                        <Text size="sm" color="orange.8" fw={600}>{formatShortRWF(entry.totalExpense)}</Text>
+                        <Group gap={4}>
+                          <Badge size="xs" color="orange" variant="light">G: {formatShortRWF(entry.generalExpense)}</Badge>
+                          <Badge size="xs" color="cyan" variant="light">S: {formatShortRWF(entry.procurementExpense)}</Badge>
+                        </Group>
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Badge size="lg" color={entry.profit >= 0 ? 'teal' : 'red'} variant="filled">
+                        {formatRWF(entry.profit)}
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {ledger.length === 0 && <Table.Tr><Table.Td colSpan={4} align="center"><Text py="xl" c="dimmed">No historical data available for this range.</Text></Table.Td></Table.Tr>}
+              </Table.Tbody>
+            </Table>
+          </Paper>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="profit">
+          <Paper withBorder radius="lg" p="md">
+            <Title order={4} mb="md">Recipe-Based Profitability Analysis</Title>
+            <Text size="sm" c="dimmed" mb="xl">This breakdown calculates profit based on the raw material costs defined in each item's recipe.</Text>
+            
+            <Table verticalSpacing="sm" highlightOnHover withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Menu Item</Table.Th>
+                  <Table.Th ta="center">Qty Sold</Table.Th>
+                  <Table.Th>Unit Price/Cost</Table.Th>
+                  <Table.Th>Total Revenue</Table.Th>
+                  <Table.Th>Production Cost</Table.Th>
+                  <Table.Th>Gross Profit</Table.Th>
+                  <Table.Th ta="right">Margin %</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {profitAnalysis.map((item, i) => (
+                  <Table.Tr key={i}>
+                    <Table.Td><Text fw={700}>{item.name}</Text></Table.Td>
+                    <Table.Td ta="center"><Badge variant="outline">{item.quantitySold}</Badge></Table.Td>
+                    <Table.Td>
+                      <Stack gap={0}>
+                        <Text size="xs">Price: {formatRWF(item.unitPrice)}</Text>
+                        <Text size="xs" c="dimmed">Cost: {formatRWF(item.unitCost)}</Text>
+                      </Stack>
+                    </Table.Td>
+                    <Table.Td><Text size="sm" fw={600}>{formatRWF(item.revenue)}</Text></Table.Td>
+                    <Table.Td><Text size="sm" color="orange.8">{formatRWF(item.totalCost)}</Text></Table.Td>
+                    <Table.Td>
+                      <Text size="sm" color="teal.8" fw={700}>{formatRWF(item.profit)}</Text>
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Badge size="lg" color={item.margin > 30 ? 'teal' : item.margin > 15 ? 'orange' : 'red'} variant="filled">
+                        {item.margin.toFixed(1)}%
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+                {profitAnalysis.length === 0 && <Table.Tr><Table.Td colSpan={7} align="center"><Text py="xl" c="dimmed">No recipe data available for items sold in this range.</Text></Table.Td></Table.Tr>}
+              </Table.Tbody>
+            </Table>
+          </Paper>
+        </Tabs.Panel>
+      </Tabs>
+      
+      <Divider my="sm" className="no-print" />
+      <Paper withBorder p="md" radius="lg" bg="gray.0" className="no-print">
+        <Text size="xs" c="dimmed" ta="center">SmartServe Financial Forensic Module &copy; 2026 for Advanced Reporting & Integrity.</Text>
+      </Paper>
+    </Stack>
+  );
+}
