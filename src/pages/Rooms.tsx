@@ -14,7 +14,6 @@ import {
   Skeleton,
   Stack,
   Switch,
-  Table,
   Tabs,
   Timeline,
   Text,
