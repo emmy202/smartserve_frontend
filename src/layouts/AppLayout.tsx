@@ -144,8 +144,8 @@ const NAV_ITEMS: NavItem[] = [
     icon: IconUsers,
     label: 'Users',
     path: '/users',
-    roles: ['ADMIN'],
-    description: 'Manage staff accounts and access',
+    roles: null,
+    description: 'Staff directory and account management',
   },
   {
     icon: IconBox,

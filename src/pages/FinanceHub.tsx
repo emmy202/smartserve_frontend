@@ -341,7 +341,7 @@ export default function FinanceHub() {
                 data={[{ value: 'DAILY', label: 'Daily Reports' }, { value: 'MONTHLY', label: 'Monthly Reports' }]}
               />
             </Group>
-            <Table.ScrollContainer minWidth={800}>
+            <Table.ScrollContainer minWidth={1000}>
             <Table verticalSpacing="sm" highlightOnHover withTableBorder>
               <Table.Thead>
                 <Table.Tr>
@@ -360,25 +360,25 @@ export default function FinanceHub() {
                   <Table.Tr key={i}>
                     <Table.Td><Text fw={700}>{entry.period}</Text></Table.Td>
                     <Table.Td>
-                      <Stack gap={0}>
-                        <Text size="sm" color="teal.8" fw={600}>{formatShortRWF(entry.totalRevenue)}</Text>
-                        <Group gap={4}>
-                          <Badge size="xs" color="teal" variant="light">P: {formatShortRWF(entry.paidRevenue)}</Badge>
-                          <Badge size="xs" color="red" variant="light">U: {formatShortRWF(entry.unpaidRevenue)}</Badge>
+                      <Stack gap={2}>
+                        <Text size="sm" color="teal.8" fw={800}>{formatShortRWF(entry.totalRevenue)}</Text>
+                        <Group gap={4} wrap="nowrap">
+                          <Badge size="xs" color="teal" variant="light" circle={false}>P: {formatShortRWF(entry.paidRevenue)}</Badge>
+                          <Badge size="xs" color="red" variant="light" circle={false}>U: {formatShortRWF(entry.unpaidRevenue)}</Badge>
                         </Group>
                       </Stack>
                     </Table.Td>
                     <Table.Td>
-                       <Stack gap={0}>
-                        <Text size="sm" color="orange.8" fw={600}>{formatShortRWF(entry.totalExpense)}</Text>
-                        <Group gap={4}>
+                       <Stack gap={2}>
+                        <Text size="sm" color="orange.8" fw={800}>{formatShortRWF(entry.totalExpense)}</Text>
+                        <Group gap={4} wrap="nowrap">
                           <Badge size="xs" color="orange" variant="light">G: {formatShortRWF(entry.generalExpense)}</Badge>
                           <Badge size="xs" color="cyan" variant="light">S: {formatShortRWF(entry.procurementExpense)}</Badge>
                         </Group>
                       </Stack>
                     </Table.Td>
                     <Table.Td ta="right">
-                      <Badge size="lg" color={entry.profit >= 0 ? 'teal' : 'red'} variant="filled">
+                      <Badge size="md" color={entry.profit >= 0 ? 'teal' : 'red'} variant="filled">
                         {formatRWF(entry.profit)}
                       </Badge>
                     </Table.Td>
@@ -418,7 +418,7 @@ export default function FinanceHub() {
               <Badge size="lg" color="blue" variant="light">{productSales.length} Active Products</Badge>
             </Group>
 
-            <Table.ScrollContainer minWidth={800}>
+            <Table.ScrollContainer minWidth={1000}>
               <Table verticalSpacing="md" highlightOnHover withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
@@ -529,7 +529,7 @@ export default function FinanceHub() {
 
             <Paper withBorder radius="lg" p="md">
               <Title order={4} mb="md">Detailed Expense Log</Title>
-              <Table.ScrollContainer minWidth={800}>
+              <Table.ScrollContainer minWidth={1000}>
                 <Table verticalSpacing="sm" highlightOnHover withTableBorder>
                   <Table.Thead>
                     <Table.Tr>

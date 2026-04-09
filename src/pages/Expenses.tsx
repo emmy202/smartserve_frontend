@@ -10,7 +10,6 @@ import {
   Modal,
   NumberInput,
   Paper,
-  ScrollArea,
   SegmentedControl,
   Select,
   SimpleGrid,
@@ -442,7 +441,7 @@ export default function Expenses() {
       </SimpleGrid>
 
       <Paper withBorder radius="lg" shadow="sm" p="xs">
-        <ScrollArea>
+        <Table.ScrollContainer minWidth={1000}>
           <Table highlightOnHover verticalSpacing="md" horizontalSpacing="md" striped>
             <Table.Thead>
               <Table.Tr>
@@ -606,7 +605,7 @@ export default function Expenses() {
               )}
             </Table.Tbody>
           </Table>
-        </ScrollArea>
+        </Table.ScrollContainer>
       </Paper>
 
       <Modal

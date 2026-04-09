@@ -25,8 +25,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/dashboard" replace /> },
       
-      // Highly Restricted
-      { element: <ProtectedRoute roles={['ADMIN']} />, children: [{ path: 'users', element: <Users /> }] },
+      // Public Staff Directory
+      { element: <ProtectedRoute />, children: [{ path: 'users', element: <Users /> }] },
       
       // Management Only
       { element: <ProtectedRoute roles={['ADMIN', 'MANAGER']} />, children: [

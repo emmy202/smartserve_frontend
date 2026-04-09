@@ -22,7 +22,6 @@ import {
   Title,
   Tooltip,
   Switch,
-  ScrollArea,
 } from '@mantine/core';
 import {
   IconAlertCircle,
@@ -484,7 +483,7 @@ export default function Requests() {
       </SimpleGrid>
 
       <Paper withBorder radius="lg" shadow="sm" p="xs">
-        <ScrollArea>
+        <Table.ScrollContainer minWidth={1000}>
           <Table highlightOnHover verticalSpacing="md" horizontalSpacing="md" striped>
             <Table.Thead>
               <Table.Tr>
@@ -535,16 +534,19 @@ export default function Requests() {
                           {typeMeta.label}
                         </Badge>
                       </Table.Td>
-                      <Table.Td>
-                        <Text fw={700} size="sm">{req.title}</Text>
-                        <Text size="sm" lineClamp={2} maw={420} c="dimmed">
-                          {req.reason}
-                        </Text>
-                        {req.decisionNote && (
-                          <Text size="xs" c="dimmed" mt={4}>
-                            Note: {req.decisionNote}
+                      <Table.Td style={{ minWidth: 300 }}>
+                        <Stack gap={4}>
+                          <Text fw={800} size="sm" c="blue.9">{req.title}</Text>
+                          <Text size="xs" lineClamp={2} c="dimmed" style={{ lineHeight: 1.4 }}>
+                            {req.reason}
                           </Text>
-                        )}
+                          {req.decisionNote && (
+                            <Paper withBorder p={6} radius="sm" bg="yellow.0" style={{ borderLeft: '3px solid var(--mantine-color-yellow-5)' }} mt={4}>
+                              <Text size="xs" fw={700} c="yellow.9">Management Feedback:</Text>
+                              <Text size="xs" c="yellow.9" fs="italic">{req.decisionNote}</Text>
+                            </Paper>
+                          )}
+                        </Stack>
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm" fw={600}>
@@ -653,7 +655,7 @@ export default function Requests() {
               )}
             </Table.Tbody>
           </Table>
-        </ScrollArea>
+        </Table.ScrollContainer>
       </Paper>
 
       <Modal

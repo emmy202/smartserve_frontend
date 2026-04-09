@@ -38,6 +38,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { modals } from '@mantine/modals';
 import api from '../lib/api';
+import useAuthStore from '../store/authStore';
 
 interface User {
   id: number;
@@ -116,6 +117,7 @@ export default function Users() {
   const [sortMode, setSortMode] = useState<SortMode>('NEWEST');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { user } = useAuthStore();
 
   useEffect(() => {
     const s = searchParams.get('search');
@@ -300,9 +302,11 @@ export default function Users() {
               <IconRefresh size="1rem" />
             </ActionIcon>
           </Tooltip>
-          <Button leftSection={<IconUserPlus size="1rem" />} onClick={() => setModalOpen(true)}>
-            Add User
-          </Button>
+          {user?.role === 'ADMIN' && (
+            <Button leftSection={<IconUserPlus size="1rem" />} onClick={() => setModalOpen(true)}>
+              Add User
+            </Button>
+          )}
         </Group>
       </Group>
 
@@ -423,25 +427,27 @@ export default function Users() {
                 </Table.Td>
               </Table.Tr>
             ) : (
-              filteredUsers.map((user) => (
-                <Table.Tr key={user.id}>
-                  <Table.Td fw={700}>#{user.id}</Table.Td>
+              filteredUsers.map((staffMember) => (
+                <Table.Tr key={staffMember.id}>
+                  <Table.Td fw={700}>#{staffMember.id}</Table.Td>
                   <Table.Td>
-                    <Text fw={600}>{user.name}</Text>
+                    <Text fw={600}>{staffMember.name}</Text>
                   </Table.Td>
-                  <Table.Td c="dimmed">{user.email}</Table.Td>
+                  <Table.Td c="dimmed">{staffMember.email}</Table.Td>
                   <Table.Td>
-                    <Badge color={roleColor[user.role] ?? 'gray'} variant="light">
-                      {user.role}
+                    <Badge color={roleColor[staffMember.role] ?? 'gray'} variant="light">
+                      {staffMember.role}
                     </Badge>
                   </Table.Td>
-                  <Table.Td>{new Date(user.createdAt).toLocaleDateString()}</Table.Td>
+                  <Table.Td>{new Date(staffMember.createdAt).toLocaleDateString()}</Table.Td>
                   <Table.Td style={{ textAlign: 'center' }}>
-                    <Tooltip label="Delete User">
-                      <ActionIcon color="red" variant="light" onClick={() => deleteUser(user)}>
-                        <IconTrash size="1rem" />
-                      </ActionIcon>
-                    </Tooltip>
+                    {user?.role === 'ADMIN' && (
+                      <Tooltip label="Delete User">
+                        <ActionIcon color="red" variant="light" onClick={() => deleteUser(staffMember)}>
+                          <IconTrash size="1rem" />
+                        </ActionIcon>
+                      </Tooltip>
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ))
