@@ -16,6 +16,7 @@ import {
   Tabs,
   Tooltip,
   Divider,
+  Pagination,
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import {
@@ -81,11 +82,26 @@ interface Expense {
   status: string;
 }
 
+interface ProductSales {
+  date: string;
+  id: number;
+  name: string;
+  category: string;
+  type: string;
+  sold: number;
+  revenue: number;
+  unitPrice: number;
+  currentStock: number | null;
+}
+
 export default function FinanceHub() {
   const [data, setData] = useState<FinanceReport | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [profitAnalysis, setProfitAnalysis] = useState<ProfitAnalysis[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [productSales, setProductSales] = useState<ProductSales[]>([]);
+  const [productPage, setProductPage] = useState(1);
+  const productsPerPage = 10;
   const [loading, setLoading] = useState(true);
   
   // Custom Date Range
@@ -103,16 +119,18 @@ export default function FinanceHub() {
       const start = dateRange[0].toISOString();
       const end = dateRange[1].toISOString();
       
-      const [financeRes, ledgerRes, profitRes, expenseRes] = await Promise.all([
+      const [financeRes, ledgerRes, profitRes, expenseRes, inventoryRes] = await Promise.all([
         api.get('/reports/finance', { params: { start, end } }),
         api.get('/reports/ledger', { params: { type: ledgerType, start, end } }),
         api.get('/reports/profit-analysis', { params: { start, end } }),
-        api.get('/expenses', { params: { start, end } })
+        api.get('/expenses', { params: { start, end } }),
+        api.get('/orders/inventory-report', { params: { start, end } })
       ]);
       setData(financeRes.data);
       setLedger(ledgerRes.data);
       setProfitAnalysis(profitRes.data);
       setExpenses(expenseRes.data || []);
+      setProductSales(inventoryRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -165,10 +183,36 @@ export default function FinanceHub() {
           <Title order={2}>Financial Ledger & Printing Center</Title>
           <Text size="sm" c="dimmed">Analyze your business performance within any specified date range.</Text>
         </div>
-        <Group>
+        <Group align="flex-end">
+          <Stack gap={4}>
+            <Text size="xs" fw={700} c="dimmed" tt="uppercase">Quick Select</Text>
+            <Group gap="xs">
+              <Button 
+                variant="subtle" 
+                size="xs" 
+                onClick={() => setDateRange([dayjs().startOf('day').toDate(), dayjs().endOf('day').toDate()])}
+              >
+                Today
+              </Button>
+              <Button 
+                variant="subtle" 
+                size="xs" 
+                onClick={() => setDateRange([dayjs().subtract(1, 'day').startOf('day').toDate(), dayjs().subtract(1, 'day').endOf('day').toDate()])}
+              >
+                Yesterday
+              </Button>
+              <Button 
+                variant="subtle" 
+                size="xs" 
+                onClick={() => setDateRange([dayjs().startOf('month').toDate(), dayjs().endOf('day').toDate()])}
+              >
+                This Month
+              </Button>
+            </Group>
+          </Stack>
           <DatePickerInput
             type="range"
-            label="Specified Date Range"
+            label="Custom Date Range"
             placeholder="Select dates"
             value={dateRange}
             onChange={(val: any) => setDateRange(val)}
@@ -183,6 +227,7 @@ export default function FinanceHub() {
         <Tabs.List mb="lg" className="no-print">
           <Tabs.Tab value="summary" leftSection={<IconReportAnalytics size={16} />}>Executive Summary</Tabs.Tab>
           <Tabs.Tab value="ledger" leftSection={<IconListCheck size={16} />}>Historical Ledger</Tabs.Tab>
+          <Tabs.Tab value="products" leftSection={<IconListCheck size={16} />}>Product Sales</Tabs.Tab>
           <Tabs.Tab value="expenses" leftSection={<IconTrendingDown size={16} />}>Expense Tracker</Tabs.Tab>
           <Tabs.Tab value="profit" leftSection={<IconTrendingUp size={16} />}>Recipe-Based Profit</Tabs.Tab>
         </Tabs.List>
@@ -343,6 +388,102 @@ export default function FinanceHub() {
               </Table.Tbody>
             </Table>
             </Table.ScrollContainer>
+          </Paper>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="products">
+          <Paper withBorder radius="lg" p="md" mt="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} mb="xl">
+              <Paper withBorder p="md" radius="md" bg="blue.0" style={{ borderLeft: '5px solid var(--mantine-color-blue-6)' }}>
+                <Text size="xs" c="blue.9" fw={800} tt="uppercase">Total Sales Revenue (All Products)</Text>
+                <Title order={2} c="blue.9" mt={4}>
+                  {formatRWF(productSales.reduce((sum, p) => sum + p.revenue, 0))}
+                </Title>
+                <Text size="xs" c="dimmed" mt={4}>Combined earnings for the selected period</Text>
+              </Paper>
+              <Paper withBorder p="md" radius="md" bg="teal.0" style={{ borderLeft: '5px solid var(--mantine-color-teal-6)' }}>
+                <Text size="xs" c="teal.9" fw={800} tt="uppercase">Total Units Distributed</Text>
+                <Title order={2} c="teal.9" mt={4}>
+                  {new Intl.NumberFormat().format(productSales.reduce((sum, p) => sum + p.sold, 0))} Units
+                </Title>
+                <Text size="xs" c="dimmed" mt={4}>Total quantity of items moved out of stock</Text>
+              </Paper>
+            </SimpleGrid>
+
+            <Group justify="space-between" mb="md">
+              <div>
+                <Title order={4}>Product Performance & Sales Rank</Title>
+                <Text size="sm" c="dimmed">Track exactly how many of each item was sold and the revenue it generated.</Text>
+              </div>
+              <Badge size="lg" color="blue" variant="light">{productSales.length} Active Products</Badge>
+            </Group>
+
+            <Table.ScrollContainer minWidth={800}>
+              <Table verticalSpacing="md" highlightOnHover withTableBorder>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Date</Table.Th>
+                    <Table.Th>Product Name</Table.Th>
+                    <Table.Th>Category</Table.Th>
+                    <Table.Th ta="right">Unit Price</Table.Th>
+                    <Table.Th ta="center">Units Sold</Table.Th>
+                    <Table.Th ta="right">Total Revenue</Table.Th>
+                    <Table.Th ta="center">Stock Status</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {productSales.length > 0 ? productSales.slice((productPage - 1) * productsPerPage, productPage * productsPerPage).map((product, idx) => (
+                    <Table.Tr key={`${product.id}-${product.date}-${idx}`}>
+                      <Table.Td>
+                        <Text fw={700} size="sm">{dayjs(product.date).format('DD MMM YYYY')}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text fw={700}>{product.name}</Text>
+                        <Badge size="xs" variant="light" color={product.type === 'FOOD' ? 'orange' : 'cyan'}>{product.type}</Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge color="gray" variant="outline">{product.category}</Badge>
+                      </Table.Td>
+                      <Table.Td ta="right">{formatRWF(product.unitPrice)}</Table.Td>
+                      <Table.Td ta="center">
+                        <Text fw={800} size="lg">{product.sold}</Text>
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <Text fw={700} c="blue">{formatRWF(product.revenue)}</Text>
+                      </Table.Td>
+                      <Table.Td ta="center">
+                        {product.currentStock !== null ? (
+                          <Badge 
+                            color={product.currentStock <= 5 ? 'red' : product.currentStock <= 15 ? 'orange' : 'teal'} 
+                            variant="dot"
+                          >
+                            {product.currentStock} remaining
+                          </Badge>
+                        ) : (
+                          <Text size="xs" c="dimmed">Not tracked</Text>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  )) : (
+                    <Table.Tr>
+                      <Table.Td colSpan={5} align="center">
+                        <Text py="xl" c="dimmed">No sales recorded for the selected period.</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+            {productSales.length > productsPerPage && (
+              <Group justify="center" mt="xl">
+                <Pagination 
+                  total={Math.ceil(productSales.length / productsPerPage)} 
+                  value={productPage} 
+                  onChange={setProductPage} 
+                  radius="xl"
+                />
+              </Group>
+            )}
           </Paper>
         </Tabs.Panel>
 

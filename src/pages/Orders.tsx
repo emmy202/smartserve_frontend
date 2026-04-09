@@ -249,31 +249,34 @@ export default function Orders() {
   }, [view, fetchHistory, fetchMenu, fetchRooms]);
 
   const addToTicket = useCallback((item: MenuItem, qty = 1) => {
-    setTicket((curr) => {
-      const existing = curr.find((x) => x.item.id === item.id);
-      if (existing) {
-        return curr.map((x) => (x.item.id === item.id ? { ...x, qty: x.qty + qty } : x));
-      }
-      return [...curr, { item, qty }];
-    });
+    setTicket((curr) => [...curr, { item, qty, note: '' }]);
   }, []);
 
-  const updateQty = (id: number, qty: number) => {
+  const updateQty = (index: number, qty: number) => {
     setTicket((curr) =>
       curr
-        .map((x) => (x.item.id === id ? { ...x, qty } : x))
+        .map((x, i) => (i === index ? { ...x, qty } : x))
         .filter((x) => x.qty > 0)
     );
   };
 
-  const updateNote = (id: number, note: string) => {
+  const updateNote = (index: number, note: string) => {
     setTicket((curr) =>
-      curr.map((x) => (x.item.id === id ? { ...x, note } : x))
+      curr.map((x, i) => (i === index ? { ...x, note } : x))
     );
   };
 
-  const removeItem = (id: number) => {
-    setTicket((curr) => curr.filter((x) => x.item.id !== id));
+  const duplicateItem = (index: number) => {
+    setTicket((curr) => {
+      const item = curr[index];
+      const newItems = [...curr];
+      newItems.splice(index + 1, 0, { ...item, qty: 1 });
+      return newItems;
+    });
+  };
+
+  const removeItem = (index: number) => {
+    setTicket((curr) => curr.filter((_, i) => i !== index));
   };
 
   const clearTicket = () => {
@@ -356,6 +359,36 @@ export default function Orders() {
           });
         } finally {
           setSubmitting(false);
+        }
+      },
+    });
+  };
+
+  const cancelOrder = async (id: number) => {
+    modals.openConfirmModal({
+      title: 'Cancel Order',
+      children: (
+        <Text size="sm">
+          Are you sure you want to cancel Order #{id}? All recorded stock for this order will be returned to inventory. This action cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: 'Yes, Cancel Order', cancel: 'No, Keep It' },
+      confirmProps: { color: 'red' },
+      onConfirm: async () => {
+        try {
+          await api.delete(`/orders/${id}`);
+          notifications.show({
+            title: 'Order Cancelled',
+            message: `Order #${id} has been voided. Stock levels updated.`,
+            color: 'gray',
+          });
+          fetchHistory();
+        } catch (err: any) {
+          notifications.show({
+            title: 'Error',
+            message: err.response?.data?.message || 'Failed to cancel order.',
+            color: 'red',
+          });
         }
       },
     });
@@ -661,8 +694,8 @@ export default function Orders() {
                   </Text>
                 ) : (
                   <Stack gap="sm">
-                    {ticket.map((x) => (
-                      <Paper key={x.item.id} withBorder radius="md" p="sm">
+                    {ticket.map((x, index) => (
+                      <Paper key={`${x.item.id}-${index}`} withBorder radius="md" p="sm">
                         <Group justify="space-between" mb={6} align="flex-start">
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <Text size="sm" fw={700} lineClamp={1}>
@@ -672,37 +705,45 @@ export default function Orders() {
                               {formatCurrency(x.item.price)} each
                             </Text>
                           </div>
-                          <Text fw={700} c="blue">
-                            {formatCurrency(x.item.price * x.qty)}
-                          </Text>
+                          <Group gap="xs">
+                            <Tooltip label="Duplicate row (e.g. to split cold/normal)">
+                              <ActionIcon size="sm" color="blue" variant="subtle" onClick={() => duplicateItem(index)}>
+                                <IconPlus size="0.8rem" />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Text fw={700} c="blue">
+                              {formatCurrency(x.item.price * x.qty)}
+                            </Text>
+                          </Group>
                         </Group>
 
                         <Group justify="space-between">
                           <Group gap="xs">
-                            <ActionIcon size="sm" variant="light" onClick={() => updateQty(x.item.id, x.qty - 1)}>
+                            <ActionIcon size="sm" variant="light" onClick={() => updateQty(index, x.qty - 1)}>
                               <IconMinus size="0.8rem" />
                             </ActionIcon>
                             <NumberInput
                               value={x.qty}
-                              onChange={(value) => updateQty(x.item.id, Number(value) || 1)}
+                              onChange={(value) => updateQty(index, Number(value) || 1)}
                               min={1}
                               hideControls
-                              styles={{ input: { width: 52, textAlign: 'center', paddingLeft: 8, paddingRight: 8 } }}
+                              styles={{ input: { width: 44, textAlign: 'center', paddingLeft: 4, paddingRight: 4 } }}
                             />
-                            <ActionIcon size="sm" variant="light" onClick={() => updateQty(x.item.id, x.qty + 1)}>
+                            <ActionIcon size="sm" variant="light" onClick={() => updateQty(index, x.qty + 1)}>
                               <IconPlus size="0.8rem" />
                             </ActionIcon>
                           </Group>
 
                           <TextInput
-                            placeholder="Add note (e.g. cold, no ice)"
+                            placeholder="Instruction (e.g. Cold)"
                             size="xs"
                             variant="filled"
-                            style={{ flex: 1 }}
+                            style={{ flex: 1, margin: '0 8px' }}
                             value={x.note || ''}
-                            onChange={(e) => updateNote(x.item.id, e.target.value)}
+                            onChange={(e) => updateNote(index, e.target.value)}
                           />
-                          <ActionIcon size="sm" color="red" variant="subtle" onClick={() => removeItem(x.item.id)}>
+
+                          <ActionIcon size="sm" color="red" variant="subtle" onClick={() => removeItem(index)}>
                             <IconTrash size="0.8rem" />
                           </ActionIcon>
                         </Group>
@@ -924,20 +965,30 @@ export default function Orders() {
                                 {order.paymentStatus}
                               </Badge>
                               {order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && (
-                                <Button
-                                  variant="gradient"
-                                  gradient={{ from: 'indigo', to: 'cyan' }}
-                                  size="xs"
-                                  mt={4}
-                                  leftSection={<IconPlus size={12} />}
-                                  onClick={() => {
-                                    setAddToOrderId(order.id);
-                                    setTableNumber(order.tableNumber);
-                                    setView('create');
-                                  }}
-                                >
-                                  Add Items
-                                </Button>
+                                <Group gap={4}>
+                                  <Button
+                                    variant="light"
+                                    color="indigo"
+                                    size="xs"
+                                    leftSection={<IconPlus size={12} />}
+                                    onClick={() => {
+                                      setAddToOrderId(order.id);
+                                      setTableNumber(order.tableNumber);
+                                      setView('create');
+                                    }}
+                                  >
+                                    Add Items
+                                  </Button>
+                                  <Button
+                                    variant="subtle"
+                                    color="red"
+                                    size="xs"
+                                    leftSection={<IconTrash size={12} />}
+                                    onClick={() => cancelOrder(order.id)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </Group>
                               )}
                             </Stack>
                           </Table.Td>

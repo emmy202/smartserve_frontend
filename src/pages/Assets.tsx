@@ -145,7 +145,7 @@ export default function Assets() {
       location: '',
       serialNumber: '',
       description: '',
-      purchaseDate: null,
+      purchaseDate: new Date().toISOString(),
       lastMaintenance: null,
       nextMaintenance: null,
     });
@@ -443,10 +443,9 @@ export default function Assets() {
               valueFormat="DD MMM YYYY"
               value={parseDate(formData.purchaseDate)} 
               onChange={(val: any) => {
-                const iso = val && typeof val.toISOString === 'function' ? val.toISOString() : (val instanceof Date ? val.toISOString() : null);
-                setFormData(prev => ({...prev, purchaseDate: iso}));
+                const date = val instanceof Date ? val : (val ? new Date(val) : null);
+                setFormData(prev => ({...prev, purchaseDate: date ? date.toISOString() : null}));
               }} 
-              dropdownType="modal"
             />
             <NumberInput 
               label="Purchase Price (RWF)" 
@@ -463,10 +462,9 @@ export default function Assets() {
               valueFormat="DD MMM YYYY"
               value={parseDate(formData.lastMaintenance)} 
               onChange={(val: any) => {
-                const iso = val && typeof val.toISOString === 'function' ? val.toISOString() : (val instanceof Date ? val.toISOString() : null);
-                setFormData(prev => ({...prev, lastMaintenance: iso}));
+                const date = val instanceof Date ? val : (val ? new Date(val) : null);
+                setFormData(prev => ({...prev, lastMaintenance: date ? date.toISOString() : null}));
               }} 
-              dropdownType="modal"
             />
             <DatePickerInput 
               label="Next Scheduled Service" 
@@ -475,10 +473,9 @@ export default function Assets() {
               valueFormat="DD MMM YYYY"
               value={parseDate(formData.nextMaintenance)} 
               onChange={(val: any) => {
-                const iso = val && typeof val.toISOString === 'function' ? val.toISOString() : (val instanceof Date ? val.toISOString() : null);
-                setFormData(prev => ({...prev, nextMaintenance: iso}));
+                const date = val instanceof Date ? val : (val ? new Date(val) : null);
+                setFormData(prev => ({...prev, nextMaintenance: date ? date.toISOString() : null}));
               }} 
-              dropdownType="modal"
             />
           </Group>
 
@@ -489,15 +486,15 @@ export default function Assets() {
               value={formData.status} 
               onChange={(val) => setFormData(prev => ({...prev, status: val as any}))} 
             />
-            <TextInput 
-              label="Specific Location" 
-              placeholder="e.g. Room 102, Lobby" 
-              value={formData.location || ''} 
-              onChange={(e) => setFormData(prev => ({...prev, location: e.target.value}))} 
-            />
           </Group>
           
-          <Textarea label="Asset Description & Condition Notes" placeholder="Enter technical details or current condition..." value={formData.description || ''} onChange={(e) => setFormData({...formData, description: e.target?.value || ''})} minRows={3} />
+          <Textarea 
+            label="Asset Description & Condition Notes" 
+            placeholder="Enter technical details or current condition..." 
+            value={formData.description || ''} 
+            onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))} 
+            minRows={3} 
+          />
           <Button fullWidth mt="md" size="lg" loading={saving} onClick={handleSave}>{isEditing ? 'Save Changes' : 'Register Asset'}</Button>
         </Stack>
       </Modal>
