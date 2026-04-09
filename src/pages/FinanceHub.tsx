@@ -370,7 +370,7 @@ export default function FinanceHub() {
                   <Table verticalSpacing="xs">
                     <Table.Thead><Table.Tr><Table.Th>Title</Table.Th><Table.Th ta="right">Amount</Table.Th></Table.Tr></Table.Thead>
                     <Table.Tbody>
-                      {[...expenses].sort((a,b) => b.amount - a.amount).slice(0, 5).map((exp, i) => (
+                      {[...expenses].sort((a,b) => b.amount - a.amount).slice(0, 5).map((exp) => (
                         <Table.Tr key={exp.id}>
                           <Table.Td>
                             <Text size="sm" fw={600}>{exp.title}</Text>
@@ -401,7 +401,7 @@ export default function FinanceHub() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {expenses.map((exp, i) => (
+                    {expenses.map((exp) => (
                       <Table.Tr key={exp.id}>
                         <Table.Td><Text size="sm">{dayjs(exp.createdAt).format('DD MMM YYYY')}</Text></Table.Td>
                         <Table.Td><Text size="sm" fw={600}>{exp.user.name}</Text></Table.Td>
