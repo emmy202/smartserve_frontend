@@ -130,14 +130,14 @@ const NAV_ITEMS: NavItem[] = [
     icon: IconBusinessplan,
     label: 'Expenses',
     path: '/expenses',
-    roles: ['ADMIN', 'MANAGER', 'WAITER'],
+    roles: null,
     description: 'Track operational spending',
   },
   {
     icon: IconClipboardList,
     label: 'Requests',
     path: '/requests',
-    roles: ['ADMIN', 'MANAGER', 'WAITER'],
+    roles: null,
     description: 'Review and manage internal requests',
   },
   {

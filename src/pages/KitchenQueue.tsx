@@ -57,6 +57,7 @@ interface OrderItem {
   preparingAt: string | null;
   readyAt: string | null;
   deliveredAt: string | null;
+  notes: string | null;
 }
 
 type QueueFilter = 'ALL' | 'PENDING' | 'PREPARING' | 'READY' | 'DELIVERED';
@@ -560,6 +561,11 @@ export default function KitchenQueue() {
                       <Text size="xs" c="green" fw={600} mt={6}>
                         Prep by: {item.preparedBy.name}
                       </Text>
+                    )}
+                    {item.notes && (
+                      <Paper withBorder p="xs" radius="xs" mt="xs" bg="yellow.0" style={{ borderLeft: '3px solid var(--mantine-color-yellow-6)' }}>
+                        <Text size="xs" fw={700} c="orange.9">INSTRUCTION: {item.notes}</Text>
+                      </Paper>
                     )}
                   </div>
                 </Group>

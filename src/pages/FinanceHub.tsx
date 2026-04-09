@@ -71,10 +71,21 @@ interface ProfitAnalysis {
   margin: number;
 }
 
+interface Expense {
+  id: number;
+  title: string;
+  amount: number;
+  category: string;
+  createdAt: string;
+  user: { name: string };
+  status: string;
+}
+
 export default function FinanceHub() {
   const [data, setData] = useState<FinanceReport | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [profitAnalysis, setProfitAnalysis] = useState<ProfitAnalysis[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Custom Date Range
@@ -92,14 +103,16 @@ export default function FinanceHub() {
       const start = dateRange[0].toISOString();
       const end = dateRange[1].toISOString();
       
-      const [financeRes, ledgerRes, profitRes] = await Promise.all([
+      const [financeRes, ledgerRes, profitRes, expenseRes] = await Promise.all([
         api.get('/reports/finance', { params: { start, end } }),
         api.get('/reports/ledger', { params: { type: ledgerType, start, end } }),
-        api.get('/reports/profit-analysis', { params: { start, end } })
+        api.get('/reports/profit-analysis', { params: { start, end } }),
+        api.get('/expenses', { params: { start, end } })
       ]);
       setData(financeRes.data);
       setLedger(ledgerRes.data);
       setProfitAnalysis(profitRes.data);
+      setExpenses(expenseRes.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -170,6 +183,7 @@ export default function FinanceHub() {
         <Tabs.List mb="lg" className="no-print">
           <Tabs.Tab value="summary" leftSection={<IconReportAnalytics size={16} />}>Executive Summary</Tabs.Tab>
           <Tabs.Tab value="ledger" leftSection={<IconListCheck size={16} />}>Historical Ledger</Tabs.Tab>
+          <Tabs.Tab value="expenses" leftSection={<IconTrendingDown size={16} />}>Expense Tracker</Tabs.Tab>
           <Tabs.Tab value="profit" leftSection={<IconTrendingUp size={16} />}>Recipe-Based Profit</Tabs.Tab>
         </Tabs.List>
 
@@ -282,6 +296,7 @@ export default function FinanceHub() {
                 data={[{ value: 'DAILY', label: 'Daily Reports' }, { value: 'MONTHLY', label: 'Monthly Reports' }]}
               />
             </Group>
+            <Table.ScrollContainer minWidth={800}>
             <Table verticalSpacing="sm" highlightOnHover withTableBorder>
               <Table.Thead>
                 <Table.Tr>
@@ -327,7 +342,85 @@ export default function FinanceHub() {
                 {ledger.length === 0 && <Table.Tr><Table.Td colSpan={4} align="center"><Text py="xl" c="dimmed">No historical data available for this range.</Text></Table.Td></Table.Tr>}
               </Table.Tbody>
             </Table>
+            </Table.ScrollContainer>
           </Paper>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="expenses">
+          <Stack gap="lg">
+            <SimpleGrid cols={{ base: 1, md: 2 }}>
+              <Paper withBorder p="lg" radius="lg">
+                <Title order={4} mb="md">Categorical Distribution</Title>
+                <Stack gap="md">
+                  {data?.breakdown.expenses.map((e, i) => (
+                    <div key={i}>
+                      <Group justify="space-between" mb={4}>
+                        <Text size="sm" fw={600}>{e.category}</Text>
+                        <Text size="sm" fw={700}>{formatRWF(e._sum.amount)}</Text>
+                      </Group>
+                      <Progress value={((e._sum.amount || 0) / (data.expense || 1)) * 100} color="orange" size="sm" radius="xl" />
+                    </div>
+                  ))}
+                  {(!data?.breakdown.expenses || data.breakdown.expenses.length === 0) && <Text c="dimmed">No expenses categorized.</Text>}
+                </Stack>
+              </Paper>
+              <Paper withBorder p="lg" radius="lg">
+                <Title order={4} mb="md">Top Expenses (Highest Outflow)</Title>
+                <Table.ScrollContainer minWidth={400}>
+                  <Table verticalSpacing="xs">
+                    <Table.Thead><Table.Tr><Table.Th>Title</Table.Th><Table.Th ta="right">Amount</Table.Th></Table.Tr></Table.Thead>
+                    <Table.Tbody>
+                      {[...expenses].sort((a,b) => b.amount - a.amount).slice(0, 5).map((exp, i) => (
+                        <Table.Tr key={exp.id}>
+                          <Table.Td>
+                            <Text size="sm" fw={600}>{exp.title}</Text>
+                            <Text size="xs" c="dimmed">{exp.category}</Text>
+                          </Table.Td>
+                          <Table.Td ta="right" fw={700} c="red">{formatRWF(exp.amount)}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                      {expenses.length === 0 && <Table.Tr><Table.Td colSpan={2} align="center"><Text size="sm" c="dimmed">No records.</Text></Table.Td></Table.Tr>}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              </Paper>
+            </SimpleGrid>
+
+            <Paper withBorder radius="lg" p="md">
+              <Title order={4} mb="md">Detailed Expense Log</Title>
+              <Table.ScrollContainer minWidth={800}>
+                <Table verticalSpacing="sm" highlightOnHover withTableBorder>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Date</Table.Th>
+                      <Table.Th>Requested By</Table.Th>
+                      <Table.Th>Description</Table.Th>
+                      <Table.Th>Category</Table.Th>
+                      <Table.Th>Status</Table.Th>
+                      <Table.Th ta="right">Amount</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {expenses.map((exp, i) => (
+                      <Table.Tr key={exp.id}>
+                        <Table.Td><Text size="sm">{dayjs(exp.createdAt).format('DD MMM YYYY')}</Text></Table.Td>
+                        <Table.Td><Text size="sm" fw={600}>{exp.user.name}</Text></Table.Td>
+                        <Table.Td><Text size="sm">{exp.title}</Text></Table.Td>
+                        <Table.Td><Badge variant="light" color="gray">{exp.category}</Badge></Table.Td>
+                        <Table.Td>
+                          <Badge variant="dot" color={exp.status === 'APPROVED' ? 'teal' : exp.status === 'PENDING' ? 'yellow' : 'red'}>
+                            {exp.status}
+                          </Badge>
+                        </Table.Td>
+                        <Table.Td ta="right" fw={700}>{formatRWF(exp.amount)}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                    {expenses.length === 0 && <Table.Tr><Table.Td colSpan={6} align="center"><Text py="xl" c="dimmed">No expenses found for this range.</Text></Table.Td></Table.Tr>}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            </Paper>
+          </Stack>
         </Tabs.Panel>
 
         <Tabs.Panel value="profit">
@@ -335,6 +428,7 @@ export default function FinanceHub() {
             <Title order={4} mb="md">Recipe-Based Profitability Analysis</Title>
             <Text size="sm" c="dimmed" mb="xl">This breakdown calculates profit based on the raw material costs defined in each item's recipe.</Text>
             
+            <Table.ScrollContainer minWidth={1000}>
             <Table verticalSpacing="sm" highlightOnHover withTableBorder>
               <Table.Thead>
                 <Table.Tr>
@@ -373,6 +467,7 @@ export default function FinanceHub() {
                 {profitAnalysis.length === 0 && <Table.Tr><Table.Td colSpan={7} align="center"><Text py="xl" c="dimmed">No recipe data available for items sold in this range.</Text></Table.Td></Table.Tr>}
               </Table.Tbody>
             </Table>
+            </Table.ScrollContainer>
           </Paper>
         </Tabs.Panel>
       </Tabs>

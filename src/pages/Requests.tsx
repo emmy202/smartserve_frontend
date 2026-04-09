@@ -158,7 +158,7 @@ export default function Requests() {
 
   const fetchRequests = useCallback(async () => {
     try {
-      const res = await api.get(isAdmin ? '/requests' : '/requests/my');
+      const res = await api.get('/requests');
       setRequests(res.data || []);
       setLastUpdated(new Date());
     } catch (err) {

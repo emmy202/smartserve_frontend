@@ -152,7 +152,7 @@ export default function Expenses() {
   const fetchExpenses = useCallback(async () => {
     try {
       setError('');
-      const res = await api.get(isAdmin ? '/expenses' : '/expenses/my');
+      const res = await api.get('/expenses');
       setExpenses(res.data || []);
       setLastUpdated(new Date());
     } catch (err) {

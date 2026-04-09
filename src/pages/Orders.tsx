@@ -77,6 +77,7 @@ interface OrderItemHistory {
   id: number;
   quantity: number;
   status: string;
+  notes?: string | null;
   createdAt: string;
   preparingAt?: string | null;
   readyAt?: string | null;
@@ -265,6 +266,12 @@ export default function Orders() {
     );
   };
 
+  const updateNote = (id: number, note: string) => {
+    setTicket((curr) =>
+      curr.map((x) => (x.item.id === id ? { ...x, note } : x))
+    );
+  };
+
   const removeItem = (id: number) => {
     setTicket((curr) => curr.filter((x) => x.item.id !== id));
   };
@@ -312,7 +319,7 @@ export default function Orders() {
         try {
           if (addToOrderId) {
             await api.post(`/orders/${addToOrderId}/items`, {
-              items: ticket.map((x) => ({ menuItemId: x.item.id, quantity: x.qty })),
+              items: ticket.map((x) => ({ menuItemId: x.item.id, quantity: x.qty, notes: x.note })),
             });
             notifications.show({
               title: 'Items Added',
@@ -327,7 +334,7 @@ export default function Orders() {
           } else {
             await api.post('/orders', {
               tableNumber: roomNumber ? `Room ${roomNumber}` : (tableNumber || null),
-              items: ticket.map((x) => ({ menuItemId: x.item.id, quantity: x.qty })),
+              items: ticket.map((x) => ({ menuItemId: x.item.id, quantity: x.qty, notes: x.note })),
             });
             notifications.show({
               title: 'Order Sent',
@@ -686,6 +693,15 @@ export default function Orders() {
                               <IconPlus size="0.8rem" />
                             </ActionIcon>
                           </Group>
+
+                          <TextInput
+                            placeholder="Add note (e.g. cold, no ice)"
+                            size="xs"
+                            variant="filled"
+                            style={{ flex: 1 }}
+                            value={x.note || ''}
+                            onChange={(e) => updateNote(x.item.id, e.target.value)}
+                          />
                           <ActionIcon size="sm" color="red" variant="subtle" onClick={() => removeItem(x.item.id)}>
                             <IconTrash size="0.8rem" />
                           </ActionIcon>
@@ -882,6 +898,11 @@ export default function Orders() {
                                   {i.preparedBy && (
                                     <Text size="xs" c="green" fw={600} mt={2}>
                                       Prepared by: {i.preparedBy.name}
+                                    </Text>
+                                  )}
+                                  {i.notes && (
+                                    <Text size="xs" c="orange.8" fw={700} mt={2}>
+                                      Note: {i.notes}
                                     </Text>
                                   )}
                                 </Paper>

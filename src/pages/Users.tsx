@@ -391,6 +391,7 @@ export default function Users() {
       </Card>
 
       <Paper withBorder radius="lg" shadow="sm" p="xs">
+      <Table.ScrollContainer minWidth={800}>
         <Table highlightOnHover verticalSpacing="md" horizontalSpacing="md" striped>
           <Table.Thead>
             <Table.Tr>
@@ -447,6 +448,7 @@ export default function Users() {
             )}
           </Table.Tbody>
         </Table>
+      </Table.ScrollContainer>
       </Paper>
 
       <Modal opened={modalOpen} onClose={closeModal} title="Add New User" centered radius="lg">
