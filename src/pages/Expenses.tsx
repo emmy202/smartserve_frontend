@@ -51,7 +51,8 @@ interface Expense {
   createdAt: string;
   reviewedAt?: string | null;
   decisionNote?: string | null;
-  category?: string | null;
+  categoryId?: number | null;
+  category?: { name: string } | null;
 }
 
 type StatusFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -128,7 +129,8 @@ export default function Expenses() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState<number | string>('');
-  const [category, setCategory] = useState<string | null>('OPERATIONS');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -151,8 +153,12 @@ export default function Expenses() {
   const fetchExpenses = useCallback(async () => {
     try {
       setError('');
-      const res = await api.get('/expenses');
-      setExpenses(res.data || []);
+      const [expRes, catRes] = await Promise.all([
+        api.get('/expenses'),
+        api.get('/categories', { params: { type: 'EXPENSE' } })
+      ]);
+      setExpenses(expRes.data || []);
+      setCategories(catRes.data || []);
       setLastUpdated(new Date());
     } catch (err) {
       console.error(err);
@@ -180,12 +186,12 @@ export default function Expenses() {
       await api.post('/expenses', {
         title: title.trim(),
         amount: Number(amount),
-        category,
-        note: note.trim(),
+        categoryId: Number(categoryId),
+        description: note.trim(),
       });
       setTitle('');
       setAmount('');
-      setCategory('OPERATIONS');
+      setCategoryId(null);
       setNote('');
       await fetchExpenses();
     } catch {
@@ -263,7 +269,7 @@ export default function Expenses() {
           exp.title.toLowerCase().includes(term) ||
           exp.user?.name?.toLowerCase().includes(term) ||
           exp.user?.role?.toLowerCase().includes(term) ||
-          exp.category?.toLowerCase().includes(term)
+          exp.category?.name?.toLowerCase().includes(term)
         );
       })
       .sort((a, b) => {
@@ -358,16 +364,12 @@ export default function Expenses() {
             />
             <Select
               label="Category"
-              value={category}
-              onChange={setCategory}
-              data={[
-                { value: 'OPERATIONS', label: 'Operations' },
-                { value: 'MAINTENANCE', label: 'Maintenance' },
-                { value: 'SUPPLIES', label: 'Supplies' },
-                { value: 'UTILITIES', label: 'Utilities' },
-                { value: 'OTHER', label: 'Other' },
-              ]}
+              placeholder="Select category"
+              value={categoryId}
+              onChange={setCategoryId}
+              data={categories.map(c => ({ value: c.id.toString(), label: c.name }))}
               allowDeselect={false}
+              required
             />
             <NumberInput
               label="Amount"
@@ -385,7 +387,7 @@ export default function Expenses() {
               onChange={(e) => setNote(e.target.value)}
               minRows={4}
             />
-            <Button loading={submitting} onClick={submitExpense} disabled={!title.trim() || !amount} leftSection={<IconPlus size={16} />}>
+            <Button loading={submitting} onClick={submitExpense} disabled={!title.trim() || !amount || !categoryId} leftSection={<IconPlus size={16} />}>
               Submit Expense
             </Button>
           </Stack>
@@ -487,7 +489,7 @@ export default function Expenses() {
                           {exp.title}
                         </Text>
                         <Text size="xs" c="dimmed">
-                          {exp.category || 'Uncategorized'}
+                          {exp.category?.name || 'Uncategorized'}
                         </Text>
                         {exp.decisionNote && (
                           <Text size="xs" c="dimmed" mt={4}>

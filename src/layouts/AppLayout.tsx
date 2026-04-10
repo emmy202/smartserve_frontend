@@ -38,6 +38,7 @@ import {
   IconCheck,
   IconBox,
   IconReportAnalytics,
+  IconTags,
 } from '@tabler/icons-react';
 import api from '../lib/api';
 import useAuthStore from '../store/authStore';
@@ -167,6 +168,13 @@ const NAV_ITEMS: NavItem[] = [
     path: '/reports',
     roles: ['ADMIN', 'MANAGER'],
     description: 'Review sales vs expenses analysis',
+  },
+  {
+    icon: IconTags,
+    label: 'Category Management',
+    path: '/categories',
+    roles: ['ADMIN', 'MANAGER'],
+    description: 'Manage dynamic labels & grouping',
   },
 ];
 

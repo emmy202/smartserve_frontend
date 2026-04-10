@@ -12,6 +12,7 @@ import Users from './pages/Users';
 import Inventory from './pages/Inventory';
 import FinanceHub from './pages/FinanceHub';
 import Assets from './pages/Assets';
+import Categories from './pages/Categories';
 import ProtectedRoute from './components/ProtectedRoute';
 
 export const router = createBrowserRouter([
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
       // Management Only
       { element: <ProtectedRoute roles={['ADMIN', 'MANAGER']} />, children: [
         { path: 'assets', element: <Assets /> },
+        { path: 'categories', element: <Categories /> },
         { path: 'reports', element: <FinanceHub /> },
         { path: 'dashboard', element: <Dashboard /> }
       ] },

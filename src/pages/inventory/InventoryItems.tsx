@@ -37,11 +37,13 @@ interface InventoryItem {
   id: number;
   name: string;
   sku: string | null;
-  category: string;
+  categoryId: number;
+  category: { name: string } | null;
   unit: string;
   currentStock: number;
   minimumStock: number;
   costPrice: number;
+  type: 'FOOD' | 'DRINK';
   active: boolean;
   preferredSupplierId: number | null;
   preferredSupplier: { name: string } | null;
@@ -50,6 +52,7 @@ interface InventoryItem {
 export default function InventoryItems() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
@@ -65,8 +68,9 @@ export default function InventoryItems() {
   const [history, setHistory] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [newItem, setNewItem] = useState<Partial<InventoryItem>>({
-    name: '', sku: '', category: 'Raw Material', unit: 'piece', 
+    name: '', sku: '', categoryId: undefined, unit: 'piece', 
     currentStock: 0, minimumStock: 0, costPrice: 0,
+    type: 'FOOD',
     active: true
   });
   const [editingItem, setEditingItem] = useState<Partial<InventoryItem>>({});
@@ -84,12 +88,14 @@ export default function InventoryItems() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [itemsRes, suppliersRes] = await Promise.all([
+      const [itemsRes, suppliersRes, categoriesRes] = await Promise.all([
         api.get('/inventory/items'),
-        api.get('/inventory/suppliers')
+        api.get('/inventory/suppliers'),
+        api.get('/categories', { params: { type: 'INVENTORY' } })
       ]);
       setItems(itemsRes.data);
       setSuppliers(suppliersRes.data);
+      setCategories(categoriesRes.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -109,8 +115,8 @@ export default function InventoryItems() {
       fetchData();
       closeCreate();
       setNewItem({
-        name: '', sku: '', category: 'Raw Material', unit: 'piece', 
-        currentStock: 0, minimumStock: 0, costPrice: 0, active: true
+        name: '', sku: '', categoryId: undefined, unit: 'piece', 
+        currentStock: 0, minimumStock: 0, costPrice: 0, type: 'FOOD', active: true
       });
     } catch (err) {
       console.error(err);
@@ -179,6 +185,8 @@ export default function InventoryItems() {
     
     if (activeFilter === 'low') return matchesSearch && item.currentStock <= item.minimumStock;
     if (activeFilter === 'out') return matchesSearch && item.currentStock === 0;
+    if (activeFilter === 'food') return matchesSearch && item.type === 'FOOD';
+    if (activeFilter === 'drink') return matchesSearch && item.type === 'DRINK';
     return matchesSearch;
   });
 
@@ -213,6 +221,20 @@ export default function InventoryItems() {
             onClick={() => setActiveFilter('out')}
           >
             Out of Stock
+          </Badge>
+          <Badge 
+            variant={activeFilter === 'food' ? 'filled' : 'light'} 
+            color="orange" style={{ cursor: 'pointer' }}
+            onClick={() => setActiveFilter('food')}
+          >
+            Food
+          </Badge>
+          <Badge 
+            variant={activeFilter === 'drink' ? 'filled' : 'light'} 
+            color="blue" style={{ cursor: 'pointer' }}
+            onClick={() => setActiveFilter('drink')}
+          >
+            Beverages
           </Badge>
         </Group>
         <Button leftSection={<IconPlus size={16} />} onClick={openCreate} radius="md">
@@ -259,7 +281,12 @@ export default function InventoryItems() {
                       </Group>
                     </Table.Td>
                     <Table.Td>
-                      <Badge variant="outline" size="sm">{item.category}</Badge>
+                      <Group gap="xs">
+                        <Badge variant="outline" size="sm">{item.category?.name || 'Uncategorized'}</Badge>
+                        <Badge variant="light" size="xs" color={item.type === 'DRINK' ? 'blue' : 'orange'}>
+                          {item.type === 'DRINK' ? 'Beverage' : 'Food'}
+                        </Badge>
+                      </Group>
                     </Table.Td>
                     <Table.Td>
                       <Group gap="xs">
@@ -333,10 +360,11 @@ export default function InventoryItems() {
         <Stack gap="md">
           <Group grow>
             <TextInput label="Item Name" placeholder="e.g. Tomato Sauce" required value={newItem.name} onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))} />
-            <TextInput label="SKU" placeholder="TS-001" value={newItem.sku || ''} onChange={(e) => setNewItem(prev => ({ ...prev, sku: e.target.value }))} />
+            <Select label="Type" data={[{ value: 'FOOD', label: 'Food' }, { value: 'DRINK', label: 'Beverage' }]} value={newItem.type} onChange={(val) => setNewItem(prev => ({ ...prev, type: val as any }))} required />
           </Group>
+          <TextInput label="SKU" placeholder="TS-001" value={newItem.sku || ''} onChange={(e) => setNewItem(prev => ({ ...prev, sku: e.target.value }))} />
           <Group grow>
-            <Select label="Category" data={['Vegetables', 'Meat', 'Spirits', 'Soft Drinks', 'Dry Goods', 'Cleaning']} value={newItem.category} onChange={(val) => setNewItem(prev => ({ ...prev, category: val || 'General' }))} />
+            <Select label="Category" data={categories.map(c => ({ value: c.id.toString(), label: c.name }))} value={newItem.categoryId?.toString()} onChange={(val) => setNewItem(prev => ({ ...prev, categoryId: val ? +val : undefined }))} required />
             <Select label="Unit" data={['kg', 'litre', 'bottle', 'piece', 'box']} value={newItem.unit} onChange={(val) => setNewItem(prev => ({ ...prev, unit: val || 'piece' }))} />
           </Group>
           <Group grow>
@@ -354,10 +382,11 @@ export default function InventoryItems() {
         <Stack gap="md">
           <Group grow>
             <TextInput label="Item Name" required value={editingItem.name || ''} onChange={(e) => setEditingItem(prev => ({ ...prev, name: e.target.value }))} />
-            <TextInput label="SKU" value={editingItem.sku || ''} onChange={(e) => setEditingItem(prev => ({ ...prev, sku: e.target.value }))} />
+            <Select label="Type" data={[{ value: 'FOOD', label: 'Food' }, { value: 'DRINK', label: 'Beverage' }]} value={editingItem.type} onChange={(val) => setEditingItem(prev => ({ ...prev, type: val as any }))} required />
           </Group>
+          <TextInput label="SKU" value={editingItem.sku || ''} onChange={(e) => setEditingItem(prev => ({ ...prev, sku: e.target.value }))} />
           <Group grow>
-            <Select label="Category" data={['Vegetables', 'Meat', 'Spirits', 'Soft Drinks', 'Dry Goods', 'Cleaning']} value={editingItem.category} onChange={(val) => setEditingItem(prev => ({ ...prev, category: val || 'General' }))} />
+            <Select label="Category" data={categories.map(c => ({ value: c.id.toString(), label: c.name }))} value={editingItem.categoryId?.toString()} onChange={(val) => setEditingItem(prev => ({ ...prev, categoryId: val ? +val : undefined }))} required />
             <Select label="Unit" data={['kg', 'litre', 'bottle', 'piece', 'box']} value={editingItem.unit} onChange={(val) => setEditingItem(prev => ({ ...prev, unit: val || 'piece' }))} />
           </Group>
           <Group grow>
