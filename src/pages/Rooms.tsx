@@ -51,7 +51,8 @@ import useAuthStore from '../store/authStore';
 interface Room {
   id: number;
   number: string;
-  type: string;
+  categoryId: number | null;
+  category: { name: string } | null;
   price: number;
   status: 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'RESERVED';
   currentCheckIn?: string | null;
@@ -76,8 +77,6 @@ const statusIcon: Record<RoomStatus, React.ReactNode> = {
   CLEANING: <IconBrush size={16} />,
   RESERVED: <IconDoor size={16} />,
 };
-
-const roomTypes = ['STANDARD', 'DELUXE', 'SUITE', 'PENTHOUSE'];
 
 function formatCurrency(amount: number) {
   return `RWF ${new Intl.NumberFormat('en-US').format(amount || 0)}`;
@@ -130,6 +129,7 @@ export default function Rooms() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>('ALL');
   const [sortMode, setSortMode] = useState<SortMode>('NUMBER');
+  const [categories, setCategories] = useState<any[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [expectedCheckOut, setExpectedCheckOut] = useState<Date | null>(null);
@@ -138,7 +138,7 @@ export default function Rooms() {
   const [activeTab, setActiveTab] = useState<string | null>('manage');
   const [addForm, setAddForm] = useState({
     number: '',
-    type: 'STANDARD',
+    categoryId: '',
     price: 50,
   });
 
@@ -148,8 +148,12 @@ export default function Rooms() {
   const fetchRooms = useCallback(async () => {
     try {
       setError('');
-      const res = await api.get('/rooms');
-      setRooms(res.data || []);
+      const [roomsRes, categoriesRes] = await Promise.all([
+        api.get('/rooms'),
+        api.get('/categories', { params: { type: 'ROOM' } })
+      ]);
+      setRooms(roomsRes.data || []);
+      setCategories(categoriesRes.data || []);
       setLastUpdated(new Date());
     } catch (err) {
       console.error(err);
@@ -230,7 +234,11 @@ export default function Rooms() {
   const closeAddModal = () => {
     if (adding) return;
     setAddOpen(false);
-    setAddForm({ number: '', type: 'STANDARD', price: 50 });
+    setAddForm({ 
+      number: '', 
+      categoryId: categories.length > 0 ? categories[0].id.toString() : '', 
+      price: 50 
+    });
   };
 
   const addRoom = async () => {
@@ -243,7 +251,7 @@ export default function Rooms() {
     try {
       await api.post('/rooms', {
         number: addForm.number.trim(),
-        type: addForm.type,
+        categoryId: addForm.categoryId ? Number(addForm.categoryId) : undefined,
         price: Number(addForm.price),
       });
       closeAddModal();
@@ -293,7 +301,7 @@ export default function Rooms() {
         if (!term) return true;
         return (
           room.number.toLowerCase().includes(term) ||
-          room.type.toLowerCase().includes(term) ||
+          room.category?.name.toLowerCase().includes(term) ||
           room.status.toLowerCase().includes(term)
         );
       })
@@ -458,7 +466,7 @@ export default function Rooms() {
                     Room {room.number}
                   </Text>
                   <Text c="dimmed" size="sm" mt={4}>
-                    {room.type}
+                    {room.category?.name || 'Uncategorized'}
                   </Text>
                 </div>
                 <Badge
@@ -548,7 +556,7 @@ export default function Rooms() {
                     </Badge>
                   </Group>
                   <Text size="sm" c="dimmed">
-                    {selected.type} {isAdmin && `· ${formatCurrency(selected.price)} per night`}
+                    {selected.category?.name || 'Uncategorized'} {isAdmin && `· ${formatCurrency(selected.price)} per night`}
                   </Text>
                 </Paper>
 
@@ -669,11 +677,12 @@ export default function Rooms() {
           />
 
           <Select
-            label="Room Type"
-            value={addForm.type}
-            onChange={(value) => setAddForm((prev) => ({ ...prev, type: value || 'STANDARD' }))}
-            data={roomTypes}
+            label="Room Type / Category"
+            value={addForm.categoryId}
+            onChange={(value) => setAddForm((prev) => ({ ...prev, categoryId: value || '' }))}
+            data={categories.map(c => ({ value: c.id.toString(), label: c.name }))}
             allowDeselect={false}
+            required
           />
 
           <NumberInput

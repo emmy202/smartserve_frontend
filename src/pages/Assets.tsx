@@ -51,7 +51,8 @@ import dayjs from 'dayjs';
 interface Asset {
   id: number;
   name: string;
-  category: string;
+  categoryId: number | null;
+  category: { name: string } | null;
   serialNumber: string | null;
   purchaseDate: string | null;
   purchasePrice: number;
@@ -91,6 +92,7 @@ const STATUS_COLORS: any = {
 export default function Assets() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [stats, setStats] = useState<AssetStats | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   
@@ -105,7 +107,7 @@ export default function Assets() {
   
   const [formData, setFormData] = useState<Partial<Asset>>({
     name: '',
-    category: 'Electronics',
+    categoryId: null,
     status: 'OPERATIONAL',
     purchasePrice: 0,
     location: '',
@@ -117,12 +119,14 @@ export default function Assets() {
     setLoading(true);
     try {
       console.log('Fetching assets and stats...');
-      const [assetsRes, statsRes] = await Promise.all([
+      const [assetsRes, statsRes, categoriesRes] = await Promise.all([
         api.get('/assets'),
         api.get('/assets/stats'),
+        api.get('/categories', { params: { type: 'ASSET' } })
       ]);
       setAssets(assetsRes.data);
       setStats(statsRes.data);
+      setCategories(categoriesRes.data);
       console.log('Fetched assets:', assetsRes.data.length);
     } catch (err) {
       console.error('Fetch error:', err);
@@ -139,7 +143,7 @@ export default function Assets() {
     setIsEditing(false);
     setFormData({
       name: '',
-      category: 'Electronics',
+      categoryId: categories.length > 0 ? categories[0].id : null,
       status: 'OPERATIONAL',
       purchasePrice: 0,
       location: '',
@@ -242,7 +246,7 @@ export default function Assets() {
 
   const filteredAssets = assets.filter(a => 
     a.name.toLowerCase().includes(search.toLowerCase()) ||
-    a.category.toLowerCase().includes(search.toLowerCase()) ||
+    a.category?.name.toLowerCase().includes(search.toLowerCase()) ||
     a.location?.toLowerCase().includes(search.toLowerCase()) ||
     a.serialNumber?.toLowerCase().includes(search.toLowerCase())
   );
@@ -340,15 +344,15 @@ export default function Assets() {
                   <Table.Tr key={asset.id}>
                     <Table.Td>
                       <Group gap="sm">
-                        <ThemeIcon radius="md" size="sm" variant="light" color={CATEGORIES.find(c => c.value === asset.category)?.color || 'gray'}>
+                        <ThemeIcon radius="md" size="sm" variant="light" color={CATEGORIES.find(c => c.value === asset.category?.name)?.color || 'gray'}>
                           {(() => {
-                            const Icon = CATEGORIES.find(c => c.value === asset.category)?.icon || IconBox;
+                            const Icon = CATEGORIES.find(c => c.value === asset.category?.name)?.icon || IconBox;
                             return <Icon size={14} />;
                           })()}
                         </ThemeIcon>
                         <div>
                           <Text size="sm" fw={700}>{asset.name}</Text>
-                          <Text size="xs" c="dimmed">{asset.category}</Text>
+                          <Text size="xs" c="dimmed">{asset.category?.name || 'Uncategorized'}</Text>
                         </div>
                       </Group>
                     </Table.Td>
@@ -416,9 +420,10 @@ export default function Assets() {
             />
             <Select 
               label="Category" 
-              data={CATEGORIES} 
-              value={formData.category} 
-              onChange={(val) => setFormData(prev => ({...prev, category: val || 'Electronics'}))} 
+              data={categories.map(c => ({ value: c.id.toString(), label: c.name }))} 
+              value={formData.categoryId?.toString()} 
+              onChange={(val) => setFormData(prev => ({...prev, categoryId: val ? +val : null}))} 
+              required
             />
           </Group>
           <Group grow>
